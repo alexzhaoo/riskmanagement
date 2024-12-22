@@ -10,7 +10,11 @@ mytickers = ['AAPL', 'MSFT', 'GOOG', 'AMZN', 'NVDA', 'TSLA']
 
 myportfolio = data[data['Ticker'].isin(mytickers)]
 
-portfolio_returns = myportfolio.groupby('date')['Returns'].sum()
+portfolio_returns = myportfolio.groupby('Tickers')['Returns'].sum()
+
+print(portfolio_returns)
+
+
 
 
 
