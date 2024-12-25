@@ -18,10 +18,11 @@ import os
 
 # combined_data = pd.concat(stock_data.values())
 
-combined_data = pd.read_csv('\data\stock_data.csv')
+combined_data = pd.read_csv('data\stock_data.csv')
 
 
 combined_data['Returns'] = combined_data.groupby('Ticker')['4. close'].transform(lambda x: (x - x.shift(1)) / x.shift(1) * 100) * -1
+
 combined_data['Returns'] = combined_data.groupby('Ticker')['Returns'].shift(-1)
 
 
@@ -31,4 +32,4 @@ combined_data['Volume_Norm'] = combined_data.groupby('Ticker')['5. volume'].tran
 
 combined_data.dropna(inplace=True)
 
-combined_data.to_csv('stock_data.csv', index = False)
+combined_data.to_csv('data\stock_data.csv', index = False)

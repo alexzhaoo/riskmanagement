@@ -2,3 +2,5 @@ pandas
 alpha-vantage
 matplotlib
 scikit-learn
+seaborn
+PyPortfolioOpt
