@@ -1,35 +1,127 @@
-from alpha_vantage.timeseries import TimeSeries
+# from alpha_vantage.timeseries import TimeSeries
+# import pandas as pd
+# from dotenv import load_dotenv
+# import os
+# import numpy as np
+
+
+# # api_key = os.getenv('SECRET_KEY')
+# # ts = TimeSeries(key=api_key, output_format='pandas')
+
+
+# # tickers = ['AAPL', 'MSFT', 'GOOG', 'AMZN', 'NVDA', 'TSLA'] 
+# # stock_data = {}
+
+# # for ticker in tickers:
+# #     data, meta_data = ts.get_daily(symbol=ticker, outputsize='full') 
+# #     data['Ticker'] = ticker
+# #     data.reset_index(inplace=True) 
+# #     stock_data[ticker] = data
+
+# # combined_data = pd.concat(stock_data.values())
+
+# # print(combined_data.head()) 
+
+
+# # combined_data['Returns'] = combined_data.groupby('Ticker')['4. close'].transform(lambda x: (x - x.shift(1)) / x.shift(1) * 100) * -1
+
+# # combined_data['Returns'] = combined_data.groupby('Ticker')['Returns'].shift(-1)
+
+
+# # combined_data['Volatility'] = combined_data.groupby('Ticker')['Returns'].rolling(10).std().reset_index(level=0, drop=True)
+
+# # combined_data['Volume_Norm'] = combined_data.groupby('Ticker')['5. volume'].transform(lambda x: x / x.rolling(10).mean())
+
+# # combined_data.dropna(inplace=True)
+
+# # combined_data.to_csv('data\stock_data.csv', index = False)
+
+# data = pd.read_csv("data/stock_data.csv")
+
+
+# latest_ipo_date = data.groupby('Ticker')['date'].min().max()
+
+# data['Returns'] = data['Returns'] / 100
+
+# filtered_data = data[data['date'] >= latest_ipo_date]
+
+# filtered_data = filtered_data[filtered_data['Returns'].abs() < 1]
+
+# filtered_data['date'] = pd.to_datetime(filtered_data['date'])
+
+# filtered_data.set_index('date', inplace=True)
+
+
+# def compound_returns(returns):
+#     return np.prod(1 + returns) - 1
+
+# monthly_data = filtered_data.groupby('Ticker').resample('M').agg({
+#     'Returns': compound_returns,  # Use the custom function for compounding
+#     '4. close': 'last',
+#     '5. volume': 'sum'
+# }).reset_index()
+
+# monthly_data['Cumulative Return'] = monthly_data.groupby('Ticker')['Returns'].transform(lambda x: (1 + x).cumprod() - 1)
+
+# print(monthly_data.head())
+
+# monthly_data.to_csv('data/monthly_data.csv', index=False)
+
+import yfinance as yf
 import pandas as pd
-from dotenv import load_dotenv
-import os
+import numpy as np
+
+# Define the tickers you want to fetch data for
+tickers = ['AAPL' , 'MSFT', 'GOOG', 'AMZN', 'NVDA', 'TSLA']
+
+# Fetch the data for each ticker
+stock_data = {}
+for ticker in tickers:
+    data = yf.download(ticker, start="2000-01-01", end="2023-12-31")
+    data.reset_index(inplace=True)
+    data.columns = data.columns.droplevel(0)  # Drop the multi-index level if present
+    data.columns = ['Date', 'Close', 'High', 'Low', 'Open', 'Volume']  # Explicitly rename
+    data['Ticker'] = ticker
+    stock_data[ticker] = data
 
 
-# api_key = os.getenv('SECRET_KEY')
-# ts = TimeSeries(key=api_key, output_format='pandas')
+combined_data = pd.concat(stock_data.values())
 
 
-# tickers = ['AAPL', 'MSFT', 'GOOG', 'AMZN', 'NVDA', 'TSLA'] 
-# stock_data = {}
-
-# for ticker in tickers:
-#     data, meta_data = ts.get_daily(symbol=ticker, outputsize='full') 
-#     data['Ticker'] = ticker
-#     stock_data[ticker] = data
-
-# combined_data = pd.concat(stock_data.values())
-
-combined_data = pd.read_csv('data\stock_data.csv')
 
 
-combined_data['Returns'] = combined_data.groupby('Ticker')['4. close'].transform(lambda x: (x - x.shift(1)) / x.shift(1) * 100) * -1
 
-combined_data['Returns'] = combined_data.groupby('Ticker')['Returns'].shift(-1)
+combined_data.to_csv('data/testing.csv', index=False)
+# Calculate daily returns
+combined_data['Returns'] = combined_data.groupby('Ticker')['Adj Close'].pct_change()
+
+# Filter the data based on the latest IPO date
+latest_ipo_date = combined_data.groupby('Ticker')['Date'].min().max()
+filtered_data = combined_data[combined_data['Date'] >= latest_ipo_date]
+
+# Filter out extreme returns
+filtered_data = filtered_data[filtered_data['Returns'].abs() < 1]
+
+# Convert the 'Date' column to datetime format
+filtered_data['Date'] = pd.to_datetime(filtered_data['Date'])
+
+# Set the 'Date' column as the index
+filtered_data.set_index('Date', inplace=True)
 
 
-combined_data['Volatility'] = combined_data.groupby('Ticker')['Returns'].rolling(10).std().reset_index(level=0, drop=True)
+# Define a function to calculate compounded returns
+def compound_returns(returns):
+    return np.prod(1 + returns) - 1
 
-combined_data['Volume_Norm'] = combined_data.groupby('Ticker')['5. volume'].transform(lambda x: x / x.rolling(10).mean())
+# Resample the data by month and calculate the compounded monthly returns
+monthly_data = filtered_data.groupby('Ticker').resample('M').agg({
+    'Returns': compound_returns,  # Use the custom function for compounding
+    'Adj Close': 'last',
+    'Volume': 'sum'
+}).reset_index()
 
-combined_data.dropna(inplace=True)
+# Calculate cumulative returns
+monthly_data['Cumulative Return'] = monthly_data.groupby('Ticker')['Returns'].transform(lambda x: (1 + x).cumprod() - 1)
 
-combined_data.to_csv('data\stock_data.csv', index = False)
+# Save the monthly data to a new CSV file
+print(monthly_data.head())
