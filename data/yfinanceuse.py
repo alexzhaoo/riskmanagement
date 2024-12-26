@@ -4,23 +4,24 @@ import pandas as pd
 import numpy as np
 
 
-# tickers = ['AAPL' , 'MSFT', 'GOOG', 'AMZN', 'NVDA', 'TSLA']
+tickers = ['AAPL' , 'MSFT', 'GOOG', 'AMZN', 'NVDA', 'TSLA']
 
 
-# stock_data = {}
-# for ticker in tickers:
-#     data = yf.download(ticker, start="2000-01-01", end="2023-12-31")
-#     data.reset_index(inplace=True)
-#     data.columns = data.columns.droplevel(0)  # Drop the multi-index level if present
-#     data.columns = ['Date', 'Close', 'High', 'Low', 'Open', 'Volume']  # Explicitly rename
-#     data['Ticker'] = ticker
-#     stock_data[ticker] = data
+stock_data = {}
+for ticker in tickers:
+    data = yf.download(ticker, start="2000-01-01", end="2023-12-31")
+    data.reset_index(inplace=True)
+    data.columns = data.columns.droplevel(0)  # Drop the multi-index level if present
+    data.columns = ['Date', 'Close', 'High', 'Low', 'Open', 'Volume']  # Explicitly rename
+    data['Ticker'] = ticker
+    stock_data[ticker] = data
 
 
 
-# combined_data = pd.concat(stock_data.values())
+combined_data = pd.concat(stock_data.values())
 
-combined_data = pd.read_csv(r'data\testing.csv')
+tickers_str = '_'.join(tickers)
+
 
 combined_data['Returns'] = combined_data.groupby('Ticker')["Close"].pct_change()
 
@@ -41,7 +42,7 @@ filtered_data['Date'] = pd.to_datetime(filtered_data['Date'])
 filtered_data.set_index('Date', inplace=True)
 
 
-filtered_data.to_csv(r'data\noncompoundeddailyreturns.csv', index = True)
+filtered_data.to_csv(rf'data\{tickers_str}daily.csv', index = True)
 
 def compound_returns(returns):
     return np.prod(1 + returns) - 1
@@ -57,4 +58,4 @@ monthly_data['Cumulative Return'] = monthly_data.groupby('Ticker')['Returns'].tr
 
 monthly_data.set_index('Date', inplace=True)
 
-monthly_data.to_csv(r'data\monthlycompounded2010.csv', index=True)
+monthly_data.to_csv(rf'data\{tickers_str}monthlycompounded.csv', index=True)

@@ -21,7 +21,7 @@ def hist_cvar(data, var):
 def monte_carlo_var(data, alpha = 0.95, time_period = 1, num_trials = 10000):
     mean = np.mean(data)
     std_dev = np.std(data)
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(412452)
     simulated = rng.normal(mean, std_dev, num_trials)
     var = np.percentile(simulated, 100 * (1 - alpha)) * np.sqrt(time_period)
     return var , simulated
@@ -59,7 +59,7 @@ def visualize_montcarlo(simulated_returns, num_walks=100):
 
 if __name__ == '__main__':
 
-    data = pd.read_csv("data/stock_data.csv")
+    data = pd.read_csv("data/monthlycompounded2010.csv")
     
     returns = data['Returns']
 
@@ -74,12 +74,16 @@ if __name__ == '__main__':
     print(f'Monte Carlo VaR: {monte_carlo_var}')
 
 
-    pivoted = data.pivot(index='date', columns='Ticker', values='Returns')
-    weights = np.array([1 / pivoted.shape[1]] * pivoted.shape[1]) # equal weights of each stock
+    pivoted = data.pivot(index='Date', columns='Ticker', values='Returns')
+    weights = np.array([1 / pivoted.shape[1]] * pivoted.shape[1])
+    rng = np.random.default_rng(129038)
+    weights = rng.random(pivoted.shape[1])
+    weights /= weights.sum()
+    print(weights)
     stressed_return = stress_test(returns, -0.1)
 
 
-    port_volatility = diversification(returns, pivoted, weights)
+    port_volatility = diversification(returns, pivoted, weights) 
     print("portfolio volatility: ", port_volatility)
 
     evtparm = extreme_value_theory(pivoted.sum(axis=1))
