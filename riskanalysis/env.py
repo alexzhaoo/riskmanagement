@@ -3,7 +3,6 @@ import pandas as pd
 import gym
 from gym import spaces
 import PortfolioAnalysis as pa
-
 class PortfolioAgentEnv(gym.Env):
     def __init__(self, data, initial_balance=10000):
         super(PortfolioAgentEnv, self).__init__()
@@ -60,4 +59,5 @@ class PortfolioAgentEnv(gym.Env):
         done = self.current_step >= len(self.data) - self.num_stocks
 
         return self._get_obs(), reward, done, {}
+
 

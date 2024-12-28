@@ -6,3 +6,5 @@ seaborn
 PyPortfolioOpt
 numpy
 gym
+stable-baselines3
+torch

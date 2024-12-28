@@ -4,6 +4,7 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
 def hist_var(data, alpha=0.95):
     var = np.percentile(data, 100 * (1 - alpha))
     return var
