@@ -9,6 +9,7 @@ import pandas as pd
 class Policy(nn.Module):
     def __init__(self, state_size, action_size):
         super(Policy, self).__init__()
+        print(state_size)
         self.fc1 = nn.Linear(state_size, 128)
         self.fc2 = nn.Linear(128, 128)
         self.mean_layer = nn.Linear(128, action_size)
@@ -17,10 +18,15 @@ class Policy(nn.Module):
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        mean = self.mean_layer(x)
-        log_std = self.std_layer(x)
+        mean_raw = self.mean_layer(x)
+        mean = F.softmax(mean_raw, dim=-1) 
+        
+        log_std_raw = self.std_layer(x)
+        log_std = torch.tanh(log_std_raw) * 2  
         std = torch.exp(log_std)
+    
         return mean, std
+
 
 class Value(nn.Module):
     def __init__(self, state_size):
@@ -44,6 +50,13 @@ def compute_returns(rewards, dones, gamma=0.99):
         R = reward + gamma * R
         returns.insert(0, R)
     return returns
+
+def normalize_actions(action):
+    action = np.clip(action, a_min=0, a_max=None)  
+    action_sum = np.sum(action)
+    if action_sum == 0:  
+        return np.ones_like(action) / len(action)  
+    return action / action_sum
 
 def trainppo(policy, value, optimizer, trajectories, gamma=0.99, epsilon=0.2, entropy_coef=0.01):
     states, actions, rewards, log_probs, dones, next_states = zip(*trajectories)
@@ -82,7 +95,6 @@ def trainppo(policy, value, optimizer, trajectories, gamma=0.99, epsilon=0.2, en
     loss = policy_loss + value_loss
     loss.backward()
     optimizer.step()
-
 def generate_trajectories(policy, env, num_trajectories):
     trajectories = []
     for _ in range(num_trajectories):
@@ -91,16 +103,18 @@ def generate_trajectories(policy, env, num_trajectories):
         while not done:
             with torch.no_grad():
                 mean, std = policy(torch.tensor(state, dtype=torch.float32))
-                std = torch.clamp(std, min=1e-6)  # Ensure std is positive
+                std = torch.clamp(std, min=1e-6) 
                 dist = torch.distributions.Normal(mean, std)
                 action = dist.sample().numpy()
+                normalized_action = normalize_actions(action)  # Normalize weights
                 log_prob = dist.log_prob(torch.tensor(action, dtype=torch.float32)).sum().item()
-            next_state, reward, done, _ = env.step(action)
-            trajectories.append((state, action, reward, log_prob, done, next_state))
+            next_state, reward, done, _ = env.step(normalized_action)
+            trajectories.append((state, normalized_action, reward, log_prob, done, next_state))
             state = next_state
     return trajectories
 
-data = pd.read_csv("data\AAPL_MSFT_GOOG_AMZN_NVDA_TSLAmonthlycompounded.csv")
+
+data = pd.read_csv(r"data\AAPL_MSFT_GOOG_AMZN_NVDA_TSLAmonthlycompounded.csv")
 
 env = envd.PortfolioAgentEnv(data)
 
@@ -126,7 +140,6 @@ for episode in range(episodes):
 
     if episode % 10 == 0:
         print(f"Episode: {episode}, Portfolio Value: {env.portfolio_value}, Cash: {env.cash}")
-
 
 
 
