@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+import env as envd # Custom environment
+import pandas as pd
 
 class Policy(nn.Module):
     def __init__(self, state_size, action_size):
@@ -16,7 +18,8 @@ class Policy(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         mean = self.mean_layer(x)
-        std = F.softplus(self.std_layer(x))  
+        log_std = self.std_layer(x)
+        std = torch.exp(log_std)
         return mean, std
 
 class Value(nn.Module):
@@ -88,6 +91,7 @@ def generate_trajectories(policy, env, num_trajectories):
         while not done:
             with torch.no_grad():
                 mean, std = policy(torch.tensor(state, dtype=torch.float32))
+                std = torch.clamp(std, min=1e-6)  # Ensure std is positive
                 dist = torch.distributions.Normal(mean, std)
                 action = dist.sample().numpy()
                 log_prob = dist.log_prob(torch.tensor(action, dtype=torch.float32)).sum().item()
@@ -95,3 +99,47 @@ def generate_trajectories(policy, env, num_trajectories):
             trajectories.append((state, action, reward, log_prob, done, next_state))
             state = next_state
     return trajectories
+
+data = pd.read_csv("data\AAPL_MSFT_GOOG_AMZN_NVDA_TSLAmonthlycompounded.csv")
+
+env = envd.PortfolioAgentEnv(data)
+
+state_size = env.observation_space.shape[0]
+action_size = env.action_space.shape[0]
+
+policy = Policy(state_size, action_size)
+value = Value(state_size)
+
+optimizer = optim.Adam(list(policy.parameters()) + list(value.parameters()), lr=0.001, weight_decay=0.0001)
+
+num_traj = 100
+trajectories = generate_trajectories(policy, env, num_traj)
+
+
+trainppo(policy, value, optimizer, trajectories, gamma=0.99, epsilon=0.2, entropy_coef=0.01)
+
+episodes = 1000
+
+for episode in range(episodes):
+    trajectories = generate_trajectories(policy, env, num_traj)
+    trainppo(policy, value, optimizer, trajectories, gamma=0.99, epsilon=0.2, entropy_coef=0.01)
+
+    if episode % 10 == 0:
+        print(f"Episode: {episode}, Portfolio Value: {env.portfolio_value}, Cash: {env.cash}")
+
+
+
+
+state = env.reset()
+done = False
+total_reward = 0
+
+while not done:
+    with torch.no_grad():
+        mean, std = policy(torch.tensor(state, dtype=torch.float32))
+        dist = torch.distributions.Normal(mean, std)
+        action = dist.sample().numpy()
+    state, reward, done, _ = env.step(action)
+    total_reward += reward
+
+print(f"Total Reward after evaluation: {total_reward}")
