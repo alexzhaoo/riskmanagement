@@ -13,7 +13,7 @@ class PortfolioAgentEnv(gym.Env):
         self.num_stocks = len(data['Ticker'].unique())
 
         self.action_space = spaces.Box(low=-1, high=1, shape=(self.num_stocks,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.num_stocks * 16,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.num_stocks * 17,), dtype=np.float32)
 
         self.reset()
 
@@ -36,6 +36,10 @@ class PortfolioAgentEnv(gym.Env):
         
         
         grouped = self.data.groupby("Ticker")
+
+        if self.current_step + self.window_size > len(self.data):
+            return self.get_obs(), 0, True, {}
+        
         current_data = grouped.apply(lambda group: group.iloc[self.current_step:self.current_step + self.window_size])
         current_data = current_data.reset_index(drop=True)
         returns = current_data['Returns']
@@ -55,12 +59,12 @@ class PortfolioAgentEnv(gym.Env):
 
         
         portfolio_volatility = pa.diversification(returns, pivoted, action)
-        print(f"portfolio volatility: {portfolio_volatility}, portfolio return: {portfolio_return}, action: {action}")
+        # print(f"portfolio volatility: {portfolio_volatility}, portfolio return: {portfolio_return}, action: {action}")
         reward = portfolio_return / (portfolio_volatility + 1)
 
  
-        self.current_step += self.num_stocks
-        done = self.current_step >= len(self.data)/self.num_stocks
+        self.current_step += self.window_size
+        done = self.current_step >= len(self.data) - self.window_size
 
         return self._get_obs(), reward, done, {}
 

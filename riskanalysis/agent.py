@@ -16,6 +16,7 @@ class Policy(nn.Module):
         self.std_layer = nn.Linear(128, action_size)
 
     def forward(self, x):
+        print(x.shape)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         mean_raw = self.mean_layer(x)
@@ -114,6 +115,7 @@ def generate_trajectories(policy, env, num_trajectories):
     return trajectories
 
 
+
 data = pd.read_csv(r"data\AAPL_MSFT_GOOG_AMZN_NVDA_TSLAmonthlycompounded.csv")
 
 env = envd.PortfolioAgentEnv(data)
@@ -122,7 +124,9 @@ state_size = env.observation_space.shape[0]
 action_size = env.action_space.shape[0]
 
 policy = Policy(state_size, action_size)
+
 value = Value(state_size)
+
 
 optimizer = optim.Adam(list(policy.parameters()) + list(value.parameters()), lr=0.001, weight_decay=0.0001)
 
