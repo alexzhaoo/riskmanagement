@@ -8,3 +8,4 @@ numpy
 gym
 stable-baselines3
 torch
+shimmy>=2.0
