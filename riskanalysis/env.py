@@ -28,43 +28,67 @@ class PortfolioAgentEnv(gym.Env):
         grouped = self.data.groupby("Ticker")
         current_data = grouped.apply(lambda group: group.iloc[self.current_step:self.current_step + self.window_size])
         current_data = current_data.reset_index(drop=True)
+
+
+        if len(current_data)/self.num_stocks < self.window_size:
+
+            rows_need = int(self.window_size - len(current_data)/self.num_stocks)
+
+            padding = grouped.apply(lambda group: group.iloc[:rows_need])
+            padding = padding.reset_index(drop=True)
+
+            current_data = pd.concat([padding, current_data], axis=0).reset_index(drop=True)
+
+
         returns = current_data['Returns'].values
-        volume = current_data['Volume'].values
+        volume = current_data['Volume'].values 
         return np.concatenate([returns, volume ,self.weights])
 
     def step(self, action):
         
         
         grouped = self.data.groupby("Ticker")
-
-        if self.current_step + self.window_size > len(self.data):
-            return self.get_obs(), 0, True, {}
         
         current_data = grouped.apply(lambda group: group.iloc[self.current_step:self.current_step + self.window_size])
+        
+        if len(current_data)/self.num_stocks < self.window_size:
+
+            rows_need = int(self.window_size - len(current_data)/self.num_stocks)
+
+            padding = grouped.apply(lambda group: group.iloc[:rows_need])
+            padding = padding.reset_index(drop=True)
+
+            current_data = pd.concat([padding, current_data], axis=0).reset_index(drop=True)
         current_data = current_data.reset_index(drop=True)
         returns = current_data['Returns']
 
+        ticker_returns = current_data.groupby('Ticker')['Returns'].sum()
 
-        portfolio_value = sum([self.portfolio[ticker] * (1 + ret) for ticker, ret in zip(self.portfolio.keys(), returns)])
+        returns_vector = ticker_returns.values
 
-        self.portfolio = {ticker: portfolio_value * weight for ticker, weight in zip(self.portfolio.keys(), action)} # optional lines
+
         
         self.weights = action
 
-        
+        if len(returns_vector) != len(action):
+            raise ValueError(f"Mismatch: returns_vector has length {len(returns_vector)}, but action has length {len(action)}.")
 
         pivoted = current_data.pivot(index='Date', columns='Ticker', values='Returns')
 
-        portfolio_return = np.dot(pivoted.sum(axis=0).values, action)
+        portfolio_return = np.dot(returns_vector, action)
 
         
         portfolio_volatility = pa.diversification(returns, pivoted, action)
-        # print(f"portfolio volatility: {portfolio_volatility}, portfolio return: {portfolio_return}, action: {action}")
-        reward = portfolio_return / (portfolio_volatility + 1)
 
- 
+        risk_aversion = 1
+        reward = portfolio_return - risk_aversion * portfolio_volatility**2
+
+
+
+        self.portfolio = portfolio_return 
         self.current_step += self.window_size
-        done = self.current_step >= len(self.data) - self.window_size
+        # print(f"portfolio volatility: {portfolio_volatility}, portfolio return: {portfolio_return}}")
+        done = self.current_step >= len(current_data) - self.window_size
 
         return self._get_obs(), reward, done, {}
 

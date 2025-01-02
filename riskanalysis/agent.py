@@ -6,17 +6,19 @@ import numpy as np
 import env as envd # Custom environment
 import pandas as pd
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class Policy(nn.Module):
     def __init__(self, state_size, action_size):
         super(Policy, self).__init__()
-        print(state_size)
+
         self.fc1 = nn.Linear(state_size, 128)
         self.fc2 = nn.Linear(128, 128)
         self.mean_layer = nn.Linear(128, action_size)
         self.std_layer = nn.Linear(128, action_size)
 
     def forward(self, x):
-        print(x.shape)
+
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         mean_raw = self.mean_layer(x)
@@ -123,9 +125,9 @@ env = envd.PortfolioAgentEnv(data)
 state_size = env.observation_space.shape[0]
 action_size = env.action_space.shape[0]
 
-policy = Policy(state_size, action_size)
+policy = Policy(state_size, action_size).to(device)
 
-value = Value(state_size)
+value = Value(state_size).to(device)
 
 
 optimizer = optim.Adam(list(policy.parameters()) + list(value.parameters()), lr=0.001, weight_decay=0.0001)
@@ -143,7 +145,7 @@ for episode in range(episodes):
     trainppo(policy, value, optimizer, trajectories, gamma=0.99, epsilon=0.2, entropy_coef=0.01)
 
     if episode % 10 == 0:
-        print(f"Episode: {episode}, Portfolio Value: {env.portfolio_value}, Cash: {env.cash}")
+        print(f"Episode: {episode}, Portfolio Value: {env.portfolio}")
 
 
 
