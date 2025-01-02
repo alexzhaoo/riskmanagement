@@ -12,7 +12,7 @@ class PortfolioAgentEnv(gym.Env):
         self.window_size = window_size
         self.num_stocks = len(data['Ticker'].unique())
 
-        self.action_space = spaces.Box(low=-1, high=1, shape=(self.num_stocks,), dtype=np.float32)
+        self.action_space = spaces.Box(low=0, high=1, shape=(self.num_stocks,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.num_stocks * 17,), dtype=np.float32)
 
         self.reset()
@@ -77,6 +77,10 @@ class PortfolioAgentEnv(gym.Env):
 
         risk_aversion = 1
         reward = portfolio_return - risk_aversion * portfolio_volatility**2
+        print("Reward:", reward
+              , "Portfolio Return:", portfolio_return
+              , "Portfolio Volatility:", portfolio_volatility
+              , "Action:", action)
 
         self.portfolio = portfolio_return 
         self.current_step += self.window_size
