@@ -16,6 +16,9 @@ class PortfolioAgentEnv(gym.Env):
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.num_stocks * 17,), dtype=np.float32)
 
         self.reset()
+    def seed(self, seed=None):
+        self.np_random, seed = gym.utils.seeding.np_random(seed)
+        return [seed]
 
     def reset(self):
         self.current_step = 0
