@@ -47,45 +47,43 @@ def fit_fat_trailed(data):
     params = stats.t.fit(data)
     return params
 
-def visualize_montcarlo(simulated_returns, num_walks=100):
-    plt.figure(figsize=(10, 6))
-    for _ in range(num_walks):
-        walk = np.cumsum(np.random.choice(simulated_returns, size=len(simulated_returns), replace=True))
-        plt.plot(walk, linewidth=0.5, alpha=0.3)
-    plt.title('Monte Carlo Simulation of Returns')
-    plt.xlabel('Time')
-    plt.ylabel('Returns')
-    plt.show()
-
-
-if __name__ == '__main__':
-
-    data = pd.read_csv("data/monthlycompounded2010.csv")
-    
+def calculate_var(data):
     returns = data['Returns']
+    hist_var_value = hist_var(returns)
+    parametric_var_value = parametric_var(np.std(returns))
+    hist_cvar_value = hist_cvar(returns, hist_var_value)
+    monte_carlo_var_value, simulated = monte_carlo_var(returns)
 
-    hist_var = hist_var(returns)
-    parametric_var = parametric_var(np.std(returns))
-    hist_cvar = hist_cvar(returns, hist_var)
-    monte_carlo_var , simulated = monte_carlo_var(returns)
+    print(f'Historical VaR: {hist_var_value}')
+    print(f'Parametric VaR: {parametric_var_value}')  
+    print(f'Historical CVaR: {hist_cvar_value}')
+    print(f'Monte Carlo VaR: {monte_carlo_var_value}')
 
-    print(f'Historical VaR: {hist_var}')
-    print(f'Parametric VaR: {parametric_var}')  
-    print(f'Historical CVaR: {hist_cvar}')
-    print(f'Monte Carlo VaR: {monte_carlo_var}')
 
+
+
+
+
+
+
+
+def main(portweights):
+    data = pd.read_csv("data/WBA_NVD_PARA_MNST_Tmonthlycompounded.csv")
+
+    agentweights = pd.read_csv(portweights)
+
+    agentweights = agentweights.to_numpy().flatten()
+
+
+    returns = data['Returns']
+    hist_var_value, parametric_var_value, hist_cvar_value, monte_carlo_var_value = calculate_var(data)
 
     pivoted = data.pivot(index='Date', columns='Ticker', values='Returns')
+
     weights = np.array([1 / pivoted.shape[1]] * pivoted.shape[1])
     rng = np.random.default_rng(129038)
-    weights = rng.random(pivoted.shape[1])
-    weights /= weights.sum()
-    print(weights)
-    stressed_return = stress_test(returns, -0.1)
-
-
-    port_volatility = diversification(returns, pivoted, weights) 
-    print("portfolio volatility: ", port_volatility)
+    randomweights = rng.random(pivoted.shape[1])
+    randomweights /= randomweights.sum()
 
     evtparm = extreme_value_theory(pivoted.sum(axis=1))
     print("Extreme Value Theory: ", evtparm)
@@ -93,4 +91,33 @@ if __name__ == '__main__':
     fat_tail_params = fit_fat_trailed(pivoted.sum(axis=1))
     print("Fat Tail Parameters: ", fat_tail_params)
 
-    visualize_montcarlo(simulated)
+    port_volatility = diversification(returns, pivoted, randomweights) 
+    print("Random Weights portfolio volatility: ", port_volatility)
+
+    equal_portfolio_volatility = diversification(returns, pivoted, randomweights) 
+    print("Equal WeightsPortfolio volatility: ", equal_portfolio_volatility)
+
+    agent_volatility = diversification(returns, pivoted, agentweights) 
+    print("Agent Portfolio volatility: ", agent_volatility)
+
+    pivoted_cumulative = data.pivot(index='Date', columns='Ticker', values='Cumulative Return')
+    
+    portfolio_agent = (pivoted_cumulative @ agentweights).dropna()  
+    portfolio_random = (pivoted_cumulative @ randomweights).dropna()
+    portfolio_equal = (pivoted_cumulative @ weights).dropna() 
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(portfolio_random.index, portfolio_random.values, label="Random Weights", color="blue")
+    plt.plot(portfolio_equal.index, portfolio_equal.values, label="Equal Weights", color="green", linestyle="--")
+    plt.plot(portfolio_agent.index, portfolio_agent.values, label="Agent Weights", color="red", linestyle=":")
+
+
+    plt.title("Portfolio Cumulative Returns Comparison")
+    plt.xlabel("Date")
+    plt.ylabel("Cumulative Return")
+    plt.axhline(0, color='gray', linestyle='--', linewidth=0.8)
+    plt.legend()
+    plt.grid()
+    plt.show()
+if __name__ == '__main__':
+    main()
