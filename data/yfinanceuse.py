@@ -65,3 +65,5 @@ def main():
     monthly_data.set_index('Date', inplace=True)
 
     monthly_data.to_csv(rf'data\{tickers_str}monthlycompounded.csv', index=True)
+
+main()
