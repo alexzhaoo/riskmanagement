@@ -6,62 +6,67 @@ import pandas as pd
 import stableenv as envd
 import warnings
 import numpy as np
-warnings.filterwarnings("ignore")
-
-data = pd.read_csv(r"data\WBA_NVDA_PARA_MNST_Tmonthlycompounded.csv")
+from data import yfinanceuse
 
 
-env = envd.PortfolioAgentEnv(data)  
 
 
-vec_env = make_vec_env(lambda: env, n_envs=1)  
+def main():
+    warnings.filterwarnings("ignore")
+    tickers = yfinanceuse.get_tickers()
+    data = pd.read_csv(rf"data\{tickers}monthlycompounded.csv")
+    env = envd.PortfolioAgentEnv(data)  
 
-model = PPO(
-    "MlpPolicy",  
-    vec_env,  
-    verbose=1,  
-    learning_rate=3e-4,  
-    n_steps=2048, 
-    batch_size=64,  
-    n_epochs=10, 
-    gamma=0.99,
-    clip_range=0.2, 
-    ent_coef=0.01, 
-    seed=42, 
-)
+    vec_env = make_vec_env(lambda: env, n_envs=1)  
 
-
-eval_env = envd.PortfolioAgentEnv(data) 
-eval_callback = EvalCallback(
-    eval_env, 
-    best_model_save_path="./best_model", 
-    log_path="./logs", 
-    eval_freq=5000, 
-    deterministic=True, 
-    render=False,
-)
-
-model.learn(total_timesteps=100_000, callback=eval_callback)
+    model = PPO(
+        "MlpPolicy",  
+        vec_env,  
+        verbose=1,  
+        learning_rate=3e-4,  
+        n_steps=2048, 
+        batch_size=64,  
+        n_epochs=10, 
+        gamma=0.99,
+        clip_range=0.2, 
+        ent_coef=0.01, 
+        seed=42, 
+    )
 
 
-trained_model = PPO.load("best_model/best_model")
+    eval_env = envd.PortfolioAgentEnv(data) 
+    eval_callback = EvalCallback(
+        eval_env, 
+        best_model_save_path="./best_model", 
+        log_path="./logs", 
+        eval_freq=5000, 
+        deterministic=True, 
+        render=False,
+    )
+
+    model.learn(total_timesteps=100_000, callback=eval_callback)
 
 
-obs = env.reset()
+    trained_model = PPO.load("best_model/best_model")
 
 
-final_weights = None
-
-for _ in range(len(data) // env.window_size):  
-    action, _states = trained_model.predict(obs, deterministic=True)
-    obs, rewards, done, info = env.step(action)
-    final_weights = action  
-    if done:
-        break 
-
-final_weights = final_weights / np.sum(final_weights)
-
-print("Normalized Portfolio Weights:", final_weights)
+    obs = env.reset()
 
 
-print('Done')
+    final_weights = None
+
+    for _ in range(len(data) // (env.num_stocks * env.window_size)):  
+        action, _states = trained_model.predict(obs, deterministic=True)
+        obs, rewards, done, info = env.step(action)
+        final_weights = action  
+        if done:
+            break 
+    
+    final_weights = final_weights / np.sum(final_weights)
+
+    np.savetxt(rf"weights/{tickers}weights.csv", final_weights, delimiter=",")
+
+    print("Normalized Portfolio Weights:", final_weights)
+
+
+    print('Done')
