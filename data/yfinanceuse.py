@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 
-tickers = ['AAPL' , 'MSFT', 'GOOG', 'AMZN', 'NVDA', 'TSLA']
+tickers = ['WBA', 'NVDA', 'PARA', 'MNST' , 'T']
 
 
 stock_data = {}
@@ -40,9 +40,6 @@ filtered_data['Date'] = pd.to_datetime(filtered_data['Date'])
 
 
 filtered_data.set_index('Date', inplace=True)
-
-
-filtered_data.to_csv(rf'data\{tickers_str}daily.csv', index = True)
 
 def compound_returns(returns):
     return np.prod(1 + returns) - 1

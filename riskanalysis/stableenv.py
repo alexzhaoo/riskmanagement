@@ -4,6 +4,10 @@ import pandas as pd
 import gym
 from gym import spaces
 import PortfolioAnalysis as pa
+import warnings
+
+warnings.filterwarnings("ignore")
+
 class PortfolioAgentEnv(gym.Env):
     def __init__(self, data, initial_balance=10000, window_size = 8):
         super(PortfolioAgentEnv, self).__init__()
@@ -75,12 +79,12 @@ class PortfolioAgentEnv(gym.Env):
         portfolio_return = np.dot(returns_vector, action)
         portfolio_volatility = pa.diversification(returns, pivoted, action)
 
-        risk_aversion = 1
+        risk_aversion = 3
         reward = portfolio_return - risk_aversion * portfolio_volatility**2
-        print("Reward:", reward
-              , "Portfolio Return:", portfolio_return
-              , "Portfolio Volatility:", portfolio_volatility
-              , "Action:", action)
+        # print("Reward:", reward
+        #       , "Portfolio Return:", portfolio_return
+        #       , "Portfolio Volatility:", portfolio_volatility
+        #       , "Action:", action)
 
         self.portfolio = portfolio_return 
         self.current_step += self.window_size

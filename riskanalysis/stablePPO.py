@@ -4,8 +4,11 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import EvalCallback
 import pandas as pd
 import stableenv as envd
+import warnings
+import numpy as np
+warnings.filterwarnings("ignore")
 
-data = pd.read_csv(r"data\AAPL_MSFT_GOOG_AMZN_NVDA_TSLAmonthlycompounded.csv")
+data = pd.read_csv(r"data\WBA_NVDA_PARA_MNST_Tmonthlycompounded.csv")
 
 
 env = envd.PortfolioAgentEnv(data)  
@@ -41,18 +44,24 @@ eval_callback = EvalCallback(
 model.learn(total_timesteps=100_000, callback=eval_callback)
 
 
-
-model.save("ppo_financial_model")
-
-
 trained_model = PPO.load("best_model/best_model")
 
 
 obs = env.reset()
-for _ in range(1000): 
+
+
+final_weights = None
+
+for _ in range(len(data) // env.window_size):  
     action, _states = trained_model.predict(obs, deterministic=True)
     obs, rewards, done, info = env.step(action)
+    final_weights = action  
     if done:
-        obs = env.reset()
+        break 
+
+final_weights = final_weights / np.sum(final_weights)
+
+print("Normalized Portfolio Weights:", final_weights)
 
 
+print('Done')
